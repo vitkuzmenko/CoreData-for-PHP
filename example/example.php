@@ -39,19 +39,4 @@ $object = $fetchedResultsController->firstObject();
 
 $object->first_name = "Виталик";
 
-print_r($object->family);
-
-$object->family = 4;
-
-//print_r($object);
-
-//$object->save();
-
-
-
-/*
-foreach ($fetchedObjects as $object) {
-	print_r($object);
-}
-*/
-
+$object->save();

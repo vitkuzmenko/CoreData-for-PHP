@@ -20,20 +20,53 @@ class FetchedResultsController {
 	
 	private $fetchedObjects;
 	
+	private $allObjectsCount;
+	
+	public $counting = false;
+	
 	public $error = array();
 	
-	function __construct ($persistentStore, $fetchedRequest) {
-		$this->persistentStore = $persistentStore;
+	function __construct ($fetchedRequest, $counting = false, PersistentStore $store = null) {
+		
+		if (!$store) {
+			$store = \CoreData::getStore();
+		}
+		
+		$this->persistentStore = $store;
 		$this->fetchedRequest = $fetchedRequest;
+		$this->counting = $counting;
+	}
+	
+	function __destruct() {
+		if (count($this->error)) {
+			print_r($this->error);
+		}
+	}
+
+	public function executeCounting() {
+		$query = $this->fetchedRequest->querySelectCountInString();
+		
+		$result = $this->persistentStore->executeQuery($query);
+		
+		$row = mysql_fetch_row($result);
+		
+		$this->allObjectsCount = $row[0];
+
+		return $this->allObjectsCount;
 	}
 
 	public function performFetch() {
+	
+		if ($this->counting) {
+			$this->executeCounting();
+		}
+		
 		$query = $this->fetchedRequest->querySelectInString();
 		
 		$result = $this->persistentStore->executeQuery($query);
 		
 		if ($result == false) {
-			array_push($this->error, $this->errorDescription($this->persistentStore, 400));
+			array_push($this->error, $this->errorDescription($this->persistentStore, 400) . 'Query: ' . $query);
 			return;
 		}
 		
@@ -43,7 +76,7 @@ class FetchedResultsController {
 			
 			$class = $this->fetchedRequest->managedObjectClass();
 			
-			$object = new $class($this->persistentStore, $this->fetchedRequest->entity());
+			$object = new $class($this->fetchedRequest->entity(), $this->persistentStore);
 			$object->setDataFromArray($row);
 						
 			array_push($fetchedObjects, $object);
@@ -64,7 +97,28 @@ class FetchedResultsController {
 			$this->fetchedObjects = $this->performFetch();
 		}
 
+		if (!$this->fetchedObjects) {
+			return null;
+		} 
+		
 		return $this->fetchedObjects[0];
+	}
+	
+	public function getValueSetForField($field) {
+		
+		if (!$this->fetchedObjects) {
+			$this->performFetch();
+		}
+		
+		$objects = $this->fetchedObjects;
+		
+		$array = array();
+		
+		foreach ($objects as $key => $value) {
+			array_push($array, $value->getValueForKey($field));
+		}
+		
+		return $array;
 	}
 
 	private function errorDescription($store, $code) {

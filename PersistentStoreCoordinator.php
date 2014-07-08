@@ -21,7 +21,17 @@ class PersistentStoreCoordinator {
 	 * @var object
 	 * @access private
 	 */
-	private $store;
+	private $store = array();
+	
+	/**
+	 * connected to MySQL
+	 * 
+	 * (default value: false)
+	 * 
+	 * @var bool
+	 * @access private
+	 */
+	private $connected = false;
 	
 	/**
 	 * error
@@ -30,7 +40,7 @@ class PersistentStoreCoordinator {
 	 * @var array
 	 * @access private
 	 */
-	public $error;
+	public $error = array();
 	
 	/**
 	 * connect function.
@@ -41,9 +51,17 @@ class PersistentStoreCoordinator {
 	 */
 	public function connect() {
 		
+		if ($this->connected) {
+			return;
+		}
+		
 		foreach ($this->store as $name => &$store) {
 			
 			@$this->connectToStore($store);
+			
+			if (!$this->error) {
+				$this->connected = true;
+			}
 			
 		}
 		
@@ -58,10 +76,28 @@ class PersistentStoreCoordinator {
 	 * @param mixed $store
 	 * @return void
 	 */
-	public function addPersistentStore($store) {
+	public function addPersistentStore(PersistentStore $store) {
+		$this->connected = false;
 		
-		$this->store[$store->name] = $store;
-		
+		array_push($this->store, $store);
+	}
+	
+	public function getStoreByName($name) {
+		foreach ($this->store as $store) {
+			if ($name == $store->name) {
+				return $store;
+			}
+		}
+	}
+	
+	public function getStore($name = null) {
+		if ($name) {
+			return $this->getStoreByName($name);
+		} else {
+			if (count($this->store)) {
+				return $this->store[0];
+			}
+		}
 	}
 
 	/**
@@ -78,7 +114,9 @@ class PersistentStoreCoordinator {
 		
 		$connection = mysql_connect($store->host, $store->user, $store->password, $newLink);
 		
-		if ((bool) $connection) {
+		
+		
+		if ($connection) {
 			
 			mysql_set_charset($store->charset, $connection);
 			
@@ -87,9 +125,8 @@ class PersistentStoreCoordinator {
 			$this->selectDataBaseForStore($store);
 			
 		} else {
-			
+				
 			array_push($this->error, $this->errorDescription($store, 400));
-			
 		}
 		
 		return $store;

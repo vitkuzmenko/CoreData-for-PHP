@@ -14,16 +14,21 @@ require_once realpath(dirname(__FILE__)) . '/CoreData.php';
 
 class ManagedObject {
 	
-	protected $persistentStore;
+	public $persistentStore;
 	
 	protected $entity;
 	
-	protected $data;
+	protected $data = array();
 	
 	public $error = array();
 	
-	function __construct($persistentStore = null, $entity = null) {
-		$this->persistentStore = $persistentStore;
+	function __construct(EntityDescription $entity = null, PersistentStore $store = null) {
+		if (!$store) {
+			$store = \CoreData::getStore();
+		}
+		
+		$this->persistentStore = $store;
+		
 		$this->entity = $entity;
 	}
 	
@@ -48,6 +53,22 @@ class ManagedObject {
 		$this->data = $array;
 	}
 	
+	public function setDataFromPostRequest(&$post, &$error) {
+		
+		foreach ($post as $key => $value) {
+			
+			if ($key == $this->entity()->identifierFieldName) {
+				$value = intval($value);
+				if ($value == 0) {
+					continue;
+				}
+			}
+			
+			$this->$key = $value;
+		}
+		
+	}
+	
 	public function setValueForKey($key, $value) {
 		if (is_string($value)) {
 			$value = stripcslashes($value);
@@ -61,14 +82,19 @@ class ManagedObject {
 		$methodName = sprintf('set' . ucfirst($key));
 		
 		if (method_exists($this, $methodName)) {
-			$this->$methodName($key, $value);
+			$this->$methodName($value);
 		} else {
 			$this->setValueForKey($key, $value);
 		}
 	}
 	
 	public function getValueForKey($key) {
-		return $this->data[$key];
+		if (array_key_exists($key, $this->data)) {
+			return $this->data[$key];
+		} else {
+			return null;
+		}
+		
 	}
 	
 	public function __get($key) {
@@ -84,6 +110,29 @@ class ManagedObject {
 				return null;
 			}
 		}
+	}
+	
+	public function actual() {
+		
+		if (!$this->id) {
+			return $this;
+		}
+		
+		$predicate = new Predicate();
+		$predicate->addEqualOperand('id', $this->id);
+				
+		$fetchedRequest = new FetchedRequest($this->entity(), $predicate);
+		
+		$fetchedResultsController = new FetchedResultsController($fetchedRequest, false, $this->persistentStore);
+		$fetchedObjects = $fetchedResultsController->performFetch();
+		
+		$object = $fetchedResultsController->firstObject();
+	
+		if ($object) {
+			$this->data = $object->data;
+		}
+		
+		return $this;
 	}
 	
 	public function save() {
@@ -108,21 +157,25 @@ class ManagedObject {
 		return $predicate->predicateInString(',', 'SET');
 	}
 	
-	private function insert() {
+	protected function insert() {
 		$table = $this->entity()->tableInString();
 		$parameters = $this->parametersInString();
 		
 		$query = sprintf("INSERT INTO %s %s", $table, $parameters);
 		
 		$persistentStore = $this->persistentStore;
-		$persistentStore->executeQuery($query);
+		$bool = $persistentStore->executeQuery($query);
+		
+		if (!$bool) {
+			array_push($this->error, mysql_error($persistentStore->connection));
+		}
 		
 		$identifierFieldName = $this->entity()->identifierFieldName();
 		
 		$this->$identifierFieldName = $persistentStore->insertId();
 	}
 	
-	private function update() {
+	protected function update() {
 		$identifierFieldName = $this->entity()->identifierFieldName();
 		
 		$predicate = new Predicate($identifierFieldName, $this->$identifierFieldName);
@@ -133,7 +186,29 @@ class ManagedObject {
 	
 		$query = sprintf("UPDATE %s %s %s LIMIT 1", $table, $parameters, $predicateString);
 		
-		$this->persistentStore->executeQuery($query);
+		$bool = $this->persistentStore->executeQuery($query);
+		
+		if (!$bool) {
+			array_push($this->error, mysql_error($this->persistentStore->connection));
+		}
+	}
+
+	public function delete() {
+		$identifierFieldName = $this->entity()->identifierFieldName();
+		
+		$predicate = new Predicate($identifierFieldName, $this->$identifierFieldName);
+	
+		$table = $this->entity()->tableInString();
+		$parameters = $this->parametersInString();
+		$predicateString = $predicate->predicateInString();
+	
+		$query = sprintf("DELETE FROM %s %s LIMIT 1", $table, $predicateString);
+		
+		$bool = $this->persistentStore->executeQuery($query);
+		
+		if (!$bool) {
+			array_push($this->error, mysql_error($this->persistentStore->connection));
+		}
 	}
 
 	/**

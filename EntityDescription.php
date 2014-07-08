@@ -20,13 +20,18 @@ class EntityDescription {
 	
 	public $error;
 	
-	private $identifierFieldName = 'id';
+	public $identifierFieldName = 'id';
 	
 	private $managedObjectClass;
 	
 	function __construct ($table, $managedObjectClass = null, $fields = null) {
 		$this->setTable($table);
 		$this->setFields($fields);
+		
+		if (!$managedObjectClass) {
+			$managedObjectClass = sprintf('\CoreData\%s', $table);
+		}
+		
 		$this->setManagedOjectClass($managedObjectClass);
 	}
 	

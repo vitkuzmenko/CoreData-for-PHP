@@ -119,13 +119,41 @@ class Predicate {
 	}
 	
 	/**
+	 * addInOperand function.
+	 * Add IN(1,2,3)
+	 * 
+	 * @access public
+	 * @param mixed $field
+	 * @param array $value (default: array())
+	 * @return void
+	 */
+	public function addInOperand($field, array $array = array()) {
+
+		foreach ($array as $key => $value) {
+			if (is_numeric($value)) {
+				$array[$key] = intval($value);
+			} else if (is_string($value)) {
+				$array[$key] = sprintf("'%s'", $value);
+			} else if (is_array($value)) {
+				unset($array[$key]);
+			}
+		}
+
+		if (count($array)) {
+			array_push($this->operand, sprintf("`%s` IN(%s)", $field, implode(',', $array)));
+		}
+	}
+	
+	
+	
+	/**
 	 * addANDPredicate function.
 	 * 
 	 * @access public
 	 * @param mixed $predicate
 	 * @return void
 	 */
-	public function addANDPredicate($predicate) {
+	public function addAndPredicate($predicate) {
 		$this->addPredicate($predicate, 'AND');
 	}
 	
@@ -136,7 +164,7 @@ class Predicate {
 	 * @param mixed $predicate
 	 * @return void
 	 */
-	public function addORPredicate($predicate) {
+	public function addOrPredicate($predicate) {
 		$this->addPredicate($predicate, 'OR');
 	}
 	
@@ -149,7 +177,8 @@ class Predicate {
 	 * @return void
 	 */
 	public function addPredicate($predicate, $operator = null) {
-		$string = '(' . $predicate->predicateInString($operator) . ')';
+		
+		$string = '(' . $predicate->predicateInString($operator, null) . ')';
 		
 		array_push($this->operand, $string);
 	}
@@ -163,7 +192,7 @@ class Predicate {
 	 */
 	public function predicateInString($operator = null, $controlWord = 'WHERE') {
 	
-		if ($controlWord != 'WHERE' && $controlWord != 'SET') {
+		if ($controlWord != 'WHERE' && $controlWord != 'SET' && !is_null($controlWord)) {
 			array_push($this->errors, $this->errorDescription(400));
 			return;
 		}

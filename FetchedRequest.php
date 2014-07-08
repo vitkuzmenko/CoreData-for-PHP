@@ -95,12 +95,16 @@ class FetchedRequest {
 			$this->setLimit($this->defaultLimit);
 		}
 	
-		$from = intval($this->limit) * intval($number);
+		$from = intval($this->limit) * intval($number - 1);
 		
 		$this->setLimitWithRange($from, $this->limit);
 	}
 	
 	public function limitInString() {
+		
+		if ($this->limit == 0) {
+			return null;
+		}
 		
 		$limit = null;
 		
@@ -112,7 +116,7 @@ class FetchedRequest {
 			$limit = sprintf('LIMIT %d, %d', $from, $count);
 			
 		} else if (is_numeric($this->limit)) {
-		
+					
 			$limit = sprintf('LIMIT %d', $this->limit);
 			
 		}
@@ -128,12 +132,27 @@ class FetchedRequest {
 		
 		return sprintf("SELECT %s FROM %s", $fields, $table);
 	}
+
+	public function selectCount() {
+		$entity = $this->entity;
+	
+		$fields = $entity->fieldsInStringWithTable();
+		$table = $entity->tableInString();
+		
+		$identifier = $entity->identifierFieldName;
+		
+		return sprintf("SELECT COUNT(%s) FROM %s", $identifier, $table);
+	}
 		
 	public function querySelectInString() {
 		return $this->queryInString($this->selectInString());
-	}
+	}	
+
+	public function querySelectCountInString() {
+		return $this->queryInString($this->selectCount(), true);
+	}	
 	
-	public function queryInString($base) {
+	public function queryInString($base, $forCounting = false) {
 	
 		$array = array($base);
 		
@@ -149,10 +168,12 @@ class FetchedRequest {
 			array_push($array, $sort);
 		}
 		
-		$limit = $this->limitInString();
-		
-		if ((bool) $limit) {
-			array_push($array, $limit);
+		if (!$forCounting) {
+			$limit = $this->limitInString();
+			
+			if ((bool) $limit) {
+				array_push($array, $limit);
+			}			
 		}
 		
 		$query = implode(' ', $array);
