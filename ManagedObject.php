@@ -18,7 +18,7 @@ class ManagedObject {
 	
 	protected $entity;
 	
-	protected $data = array();
+	public $data = array();
 	
 	public $error = array();
 	
@@ -42,6 +42,10 @@ class ManagedObject {
 		$this->entity = $entity;
 		
 		return $entity;
+	}
+	
+	public function setEntity($entity) {
+		$this->entity = $entity;
 	}
 	
 	public function setDataFromArray(array $array = array()) {
@@ -97,6 +101,16 @@ class ManagedObject {
 		
 	}
 	
+	public function getAllData() {
+		$data = array();
+		
+		foreach ($this->data as $key => $value) {
+			$data[$key] = $this->$key;
+		}
+		
+		return $data;
+	}
+	
 	public function __get($key) {
 	
 		$methodName = sprintf('get' . ucfirst($key));
@@ -112,15 +126,36 @@ class ManagedObject {
 		}
 	}
 	
-	public function actual() {
+	public static function init($id, $entity) {
+		$idField = $entity->identifierFieldName();
 		
-		if (!$this->id) {
+		$object = new self;
+		$object->setEntity($entity);
+		$object->$idField = $id;
+		$object->actual();
+		return $object;
+	}
+	
+	public function actual($forFilledFields = false, $excludeField = null) {
+		
+		$idField = $this->entity()->identifierFieldName();
+		
+		if (!$forFilledFields && !$this->$idField) {
+			return $this;
+		}
+		
+		if ($forFilledFields && !$this->data) {
 			return $this;
 		}
 		
 		$predicate = new Predicate();
-		$predicate->addEqualOperand('id', $this->id);
-				
+		
+		if ($forFilledFields) {
+			$predicate->addEqualOperandFromArray($this->data, $excludeField);
+		} else {
+			$predicate->addEqualOperand($idField, $this->$idField);
+		}
+		
 		$fetchedRequest = new FetchedRequest($this->entity(), $predicate);
 		
 		$fetchedResultsController = new FetchedResultsController($fetchedRequest, false, $this->persistentStore);
@@ -148,6 +183,12 @@ class ManagedObject {
 		} else {
 			$this->update();
 		}
+		
+		$this->saveComplete();
+	}
+	
+	public function saveComplete() {
+		
 	}
 	
 	private function parametersInString() {
@@ -208,6 +249,17 @@ class ManagedObject {
 		
 		if (!$bool) {
 			array_push($this->error, mysql_error($this->persistentStore->connection));
+		}
+	}
+	
+	// Equals
+	
+	public function isEqualById($object) {
+		$idField = $this->entity()->identifierFieldName();
+		if (get_class($this) == get_class($object)) {
+			return $this->$idField == $object->$idField;
+		} else {
+			return false;
 		}
 	}
 

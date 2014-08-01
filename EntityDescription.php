@@ -35,8 +35,8 @@ class EntityDescription {
 		$this->setManagedOjectClass($managedObjectClass);
 	}
 	
-	public function identifierFieldName() {
-		return $this->identifierFieldName;
+	public static function identifierFieldName() {
+		return 'id';
 	}
 	
 	public function setTable($table) {

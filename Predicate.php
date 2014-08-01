@@ -33,7 +33,7 @@ class Predicate {
 	 * @return void
 	 */
 	function __construct($field = null, $value = null) {
-		if ($field && $value) {
+		if ($field && !is_null($value)) {
 			$this->addEqualOperand($field, $value);
 		}
 	}
@@ -74,6 +74,32 @@ class Predicate {
 	
 		array_push($this->operand, sprintf("`%s`='%s'", $field, $value));
 	}
+
+	/**
+	 * addNotEqualOperand function.
+	 * Add equal operand by field and value to predicate
+	 * 
+	 * @access public
+	 * @param mixed $field
+	 * @param mixed $value
+	 * @return void
+	 */
+	public function addNotEqualOperand($field, $value) {
+		
+		if (is_array($value)) {
+			if (array_key_exists('value', $value)) {
+				$value = $value['value'];
+			} else {
+				$value = null;
+			}
+		}
+		
+		if (is_string($value)) {
+			$value = mysql_real_escape_string($value);
+		}
+	
+		array_push($this->operand, sprintf("`%s`!='%s'", $field, $value));
+	}	
 	
 	/**
 	 * addEqualOperandFromArray function.
@@ -83,8 +109,12 @@ class Predicate {
 	 * @param array $array
 	 * @return void
 	 */
-	public function addEqualOperandFromArray(array $array) {
+	public function addEqualOperandFromArray(array $array, $excludeField = null) {
 		foreach ($array as $field => $value) {
+			if ($excludeField == $field) {
+				continue;
+			}
+			
 			$this->addEqualOperand($field, $value);
 		}
 	}
