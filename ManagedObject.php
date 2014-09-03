@@ -44,7 +44,7 @@ class ManagedObject {
 		return $entity;
 	}
 	
-	public function setEntity($entity) {
+	public function setEntity(EntityDescription $entity) {
 		$this->entity = $entity;
 	}
 	
@@ -70,7 +70,6 @@ class ManagedObject {
 			
 			$this->$key = $value;
 		}
-		
 	}
 	
 	public function setValueForKey($key, $value) {
@@ -98,7 +97,6 @@ class ManagedObject {
 		} else {
 			return null;
 		}
-		
 	}
 	
 	public function getAllData() {
@@ -114,8 +112,11 @@ class ManagedObject {
 	public function __get($key) {
 	
 		$methodName = sprintf('get' . ucfirst($key));
+		$underscore = mb_substr($key, 0, 1, "UTF-8") == "_";
 		
-		if (method_exists($this, $methodName)) {
+		if ($underscore) {
+			return $this->getValueForKey(ltrim($key, "_"));
+		} else if (method_exists($this, $methodName)) {
 			return $this->$methodName();
 		} else {
 			if (array_key_exists($key, $this->data)) {
@@ -126,7 +127,7 @@ class ManagedObject {
 		}
 	}
 	
-	public static function init($id, $entity) {
+	public static function init($id, EntityDescription $entity) {
 		$idField = $entity->identifierFieldName();
 		
 		$object = new self;
@@ -136,6 +137,14 @@ class ManagedObject {
 		return $object;
 	}
 	
+	/**
+	 * Actual data in object.
+	 * 
+	 * @access public
+	 * @param bool $forFilledFields (default: false) Collect WHERE section from all filled parameters in data
+	 * @param mixed $excludeField (default: null)
+	 * @return void
+	 */
 	public function actual($forFilledFields = false, $excludeField = null) {
 		
 		$idField = $this->entity()->identifierFieldName();
@@ -170,6 +179,22 @@ class ManagedObject {
 		return $this;
 	}
 	
+	
+	/**
+	 * Get all parametrs as string.
+	 * 
+	 * @access private
+	 * @return void
+	 */
+	private function getStringParametersFromData() {
+		$predicate = new Predicate();
+		$predicate->addEqualOperandFromArray($this->data);
+		
+		return $predicate->predicateInString(',', 'SET');
+	}
+	
+	// !Manage Object in MySQL
+	
 	public function save() {
 		
 		if (!$this->entity()) {
@@ -191,16 +216,9 @@ class ManagedObject {
 		
 	}
 	
-	private function parametersInString() {
-		$predicate = new Predicate();
-		$predicate->addEqualOperandFromArray($this->data);
-		
-		return $predicate->predicateInString(',', 'SET');
-	}
-	
 	protected function insert() {
 		$table = $this->entity()->tableInString();
-		$parameters = $this->parametersInString();
+		$parameters = $this->getStringParametersFromData();
 		
 		$query = sprintf("INSERT INTO %s %s", $table, $parameters);
 		
@@ -222,7 +240,7 @@ class ManagedObject {
 		$predicate = new Predicate($identifierFieldName, $this->$identifierFieldName);
 	
 		$table = $this->entity()->tableInString();
-		$parameters = $this->parametersInString();
+		$parameters = $this->getStringParametersFromData();
 		$predicateString = $predicate->predicateInString();
 	
 		$query = sprintf("UPDATE %s %s %s LIMIT 1", $table, $parameters, $predicateString);
@@ -240,7 +258,7 @@ class ManagedObject {
 		$predicate = new Predicate($identifierFieldName, $this->$identifierFieldName);
 	
 		$table = $this->entity()->tableInString();
-		$parameters = $this->parametersInString();
+		$parameters = $this->getStringParametersFromData();
 		$predicateString = $predicate->predicateInString();
 	
 		$query = sprintf("DELETE FROM %s %s LIMIT 1", $table, $predicateString);
