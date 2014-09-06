@@ -48,7 +48,7 @@ class FetchedResultsController {
 		
 		$result = $this->persistentStore->executeQuery($query);
 		
-		$row = mysql_fetch_row($result);
+		$row = mysqli_fetch_row($result);
 		
 		$this->allObjectsCount = $row[0];
 
@@ -72,7 +72,7 @@ class FetchedResultsController {
 		
 		$fetchedObjects = array();
 		
-		while ($row = mysql_fetch_assoc($result)) {
+		while ($row = mysqli_fetch_assoc($result)) {
 			
 			$class = $this->fetchedRequest->managedObjectClass();
 			
@@ -127,7 +127,7 @@ class FetchedResultsController {
 		
 		switch ($code) {
 			case 400:
-				return sprintf('%s Query Error: %s.', $persistentStore, mysql_error($store->connection));
+				return sprintf('%s Query Error: %s.', $persistentStore, $store->connection->error);
 				break;
 		}
 		

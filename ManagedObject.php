@@ -226,7 +226,7 @@ class ManagedObject {
 		$bool = $persistentStore->executeQuery($query);
 		
 		if (!$bool) {
-			array_push($this->error, mysql_error($persistentStore->connection));
+			array_push($this->error, $persistentStore->connection->error);
 		}
 		
 		$identifierFieldName = $this->entity()->identifierFieldName();
@@ -236,6 +236,7 @@ class ManagedObject {
 	
 	protected function update() {
 		$identifierFieldName = $this->entity()->identifierFieldName();
+		$store = $this->persistentStore;
 		
 		$predicate = new Predicate($identifierFieldName, $this->$identifierFieldName);
 	
@@ -245,15 +246,16 @@ class ManagedObject {
 	
 		$query = sprintf("UPDATE %s %s %s LIMIT 1", $table, $parameters, $predicateString);
 		
-		$bool = $this->persistentStore->executeQuery($query);
+		$bool = $store->executeQuery($query);
 		
 		if (!$bool) {
-			array_push($this->error, mysql_error($this->persistentStore->connection));
+			array_push($this->error, $store->connection->error);
 		}
 	}
 
 	public function delete() {
 		$identifierFieldName = $this->entity()->identifierFieldName();
+		$store = $this->persistentStore;
 		
 		$predicate = new Predicate($identifierFieldName, $this->$identifierFieldName);
 	
@@ -263,10 +265,10 @@ class ManagedObject {
 	
 		$query = sprintf("DELETE FROM %s %s LIMIT 1", $table, $predicateString);
 		
-		$bool = $this->persistentStore->executeQuery($query);
+		$bool = $store->executeQuery($query);
 		
 		if (!$bool) {
-			array_push($this->error, mysql_error($this->persistentStore->connection));
+			array_push($this->error, $store->connection->error);
 		}
 	}
 	

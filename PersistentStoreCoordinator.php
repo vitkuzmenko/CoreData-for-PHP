@@ -57,7 +57,7 @@ class PersistentStoreCoordinator {
 		
 		foreach ($this->store as $name => &$store) {
 			
-			@$this->connectToStore($store);
+			$this->connectToStore($store);
 			
 			if (!$this->error) {
 				$this->connected = true;
@@ -112,17 +112,13 @@ class PersistentStoreCoordinator {
 		
 		$newLink = (bool) count($this->store);
 		
-		$connection = mysql_connect($store->host, $store->user, $store->password, $newLink);
-		
-		
+		$connection = new \mysqli($store->host, $store->user, $store->password, $store->dataBase);
 		
 		if ($connection) {
 			
-			mysql_set_charset($store->charset, $connection);
+			$connection->set_charset($store->charset);
 			
 			$store->setConnection($connection);
-			
-			$this->selectDataBaseForStore($store);
 			
 		} else {
 				
@@ -150,7 +146,7 @@ class PersistentStoreCoordinator {
 			array_push($this->error, $this->errorDescription($store, 406));
 		}
 		
-		$dataBase = mysql_select_db($store->dataBase, $connection);
+		$dataBase = $connection->select_db($store->dataBase);
 		
 		if ($dataBase == false) {
 			

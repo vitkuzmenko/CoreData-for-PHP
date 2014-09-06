@@ -21,6 +21,8 @@ class Predicate {
 	
 	private $string;
 	
+	private $store;
+	
 	public $error = array();
 	
 	/**
@@ -32,7 +34,12 @@ class Predicate {
 	 * @param mixed $value (default: null)
 	 * @return void
 	 */
-	function __construct($field = null, $value = null) {
+	function __construct($field = null, $value = null, PersistentStore $store = null) {
+		if (!$store) {
+			$store = \CoreData::getStore();
+		}
+		$this->store = $store;
+
 		if ($field && !is_null($value)) {
 			$this->addEqualOperand($field, $value);
 		}
@@ -69,7 +76,11 @@ class Predicate {
 		}
 		
 		if (is_string($value)) {
-			$value = mysql_real_escape_string($value);
+
+			$store = $this->store;
+			$connection = $store->connection;
+			
+			$value = $connection->real_escape_string($value);
 		}
 	
 		array_push($this->operand, sprintf("`%s`='%s'", $field, $value));
@@ -95,7 +106,7 @@ class Predicate {
 		}
 		
 		if (is_string($value)) {
-			$value = mysql_real_escape_string($value);
+			$value = $this->store->connection->real_escape_string(null, $value);
 		}
 	
 		array_push($this->operand, sprintf("`%s`!='%s'", $field, $value));
@@ -131,7 +142,7 @@ class Predicate {
 	public function addLikeOperand($field, $value) {
 		$value = '%' . $value . '%';
 	
-		array_push($this->operand, sprintf("`%s` LIKE '%s'", $field, mysql_real_escape_string($value)));
+		array_push($this->operand, sprintf("`%s` LIKE '%s'", $field, $this->store->connection->real_escape_string(null, $value)));
 	}
 	
 	/**

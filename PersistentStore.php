@@ -36,7 +36,6 @@ class PersistentStore {
 		$this->password = $password;
 		$this->dataBase = $dataBase;
 		$this->charset = $charset;
-		
 	}
 
 	public function setConnection($connection) {
@@ -44,11 +43,11 @@ class PersistentStore {
 	}
 	
 	public function executeQuery($query) {
-		return mysql_query($query, $this->connection);
+		return $this->connection->query($query);
 	}
 	
 	public function insertId() {
-		return mysql_insert_id($this->connection);
+		return $this->connection->insert_id;
 	}
 
 }
