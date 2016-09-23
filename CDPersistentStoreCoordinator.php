@@ -4,15 +4,13 @@
  * Created 31/05/14 by Vitaliy Kuz'menko © 2014
  * All rights reserved.
 
- * PersistentStoreCoordinator.php
- * PersistentStoreCoordinator
+ * CDPersistentStoreCoordinator.php
+ * CDPersistentStoreCoordinator
  */
-
-namespace CoreData;
 
 require_once realpath(dirname(__FILE__)) . '/CoreData.php';
 
-class PersistentStoreCoordinator {
+class CDPersistentStoreCoordinator {
 
 	/**
 	 * store
@@ -32,16 +30,7 @@ class PersistentStoreCoordinator {
 	 * @access private
 	 */
 	private $connected = false;
-	
-	/**
-	 * error
-	 * Contains Errors
-	 * 
-	 * @var array
-	 * @access private
-	 */
-	public $error = array();
-	
+		
 	/**
 	 * connect function.
 	 * - Connect to All Persistent Store Contains in $this->store
@@ -57,9 +46,9 @@ class PersistentStoreCoordinator {
 		
 		foreach ($this->store as $name => &$store) {
 			
-			$this->connectToStore($store);
+			@$this->connectToStore($store);
 			
-			if (!$this->error) {
+			if (CDError::checkForError()) {
 				$this->connected = true;
 			}
 			
@@ -76,7 +65,7 @@ class PersistentStoreCoordinator {
 	 * @param mixed $store
 	 * @return void
 	 */
-	public function addPersistentStore(PersistentStore $store) {
+	public function addPersistentStore(CDPersistentStore $store) {
 		$this->connected = false;
 		
 		array_push($this->store, $store);
@@ -106,7 +95,7 @@ class PersistentStoreCoordinator {
 	 * 
 	 * @access private
 	 * @param mixed $store
-	 * @return PersistentStore
+	 * @return CDPersistentStore
 	 */
 	private function connectToStore(&$store) {
 		
@@ -114,15 +103,16 @@ class PersistentStoreCoordinator {
 		
 		$connection = new \mysqli($store->host, $store->user, $store->password, $store->dataBase);
 		
-		if ($connection) {
+		CDError::setCode($connection->connect_errno, $connection->connect_error);
+		
+		if (CDError::checkForError()) {
 			
 			$connection->set_charset($store->charset);
 			
 			$store->setConnection($connection);
-			
+
 		} else {
-				
-			array_push($this->error, $this->errorDescription($store, 400));
+			
 		}
 		
 		return $store;
@@ -133,7 +123,7 @@ class PersistentStoreCoordinator {
 	 * 
 	 * @access private
 	 * @param mixed $store
-	 * @return PersistentStore
+	 * @return CDPersistentStore
 	 */
 	private function selectDataBaseForStore(&$store) {
 		
@@ -141,46 +131,15 @@ class PersistentStoreCoordinator {
 		
 		$connection = $store->connection;
 		
-		if ($connection == false) {
-		
-			array_push($this->error, $this->errorDescription($store, 406));
-		}
+		CDError::setCode($connection->connect_errno, $connection->connect_error);
+				
+		return;
 		
 		$dataBase = $connection->select_db($store->dataBase);
 		
-		if ($dataBase == false) {
-			
-			array_push($this->error, $error . ' data base ' . $store->dataBase . ' not found.');
-			
-		}
+		CDError::setCode($connection->connect_errno, $connection->connect_error);
 		
 		return $dataBase;
-		
-	}
-	
-	/**
-	 * errorDescription function.
-	 * - Error Description
-	 * @access private
-	 * @param mixed &$store
-	 * @param mixed $code
-	 * @return string
-	 */
-	private function errorDescription(&$store, $code) {
-		
-		$persistentStore = sprintf('Persistent Store %s', $store->name);
-		
-		switch ($code) {
-			case 400:
-				return sprintf('%s Connection Error: is not a valid username, password or host.', $persistentStore);
-				break;
-			case 406:
-				return sprintf('%s Can not select data base. Connection is empty.', $persistentStore);
-				break;
-			case 404:
-				return sprintf('%s Data Base %s not found', $persistentStore, $store->dataBase);
-				break;
-		}
 		
 	}
 

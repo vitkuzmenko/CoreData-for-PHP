@@ -4,15 +4,13 @@
  * Created 31/05/14 by Vitaliy Kuz'menko © 2014
  * All rights reserved.
 
- * SortDescriptor.php
- * SortDescriptor
+ * CDSortDescriptor.php
+ * CDSortDescriptor
  */
-
-namespace CoreData;
 
 require_once realpath(dirname(__FILE__)) . '/CoreData.php';
 
-class SortDescriptor {
+class CDSortDescriptor {
 	
 	private $isASC;
 	
@@ -47,7 +45,13 @@ class SortDescriptor {
 			$ordering = 'DESC';
 		}
 		
-		$string = sprintf('ORDER BY `%s` %s', $this->field, $ordering);
+		$field = $this->field;
+		
+		if (CoreData::$isUnderscore) {
+			$field = CDHelper::camelCaseToUnderscore($field);
+		}
+		
+		$string = sprintf('ORDER BY `%s` %s', $field, $ordering);
 		
 		$this->string = $string;
 		

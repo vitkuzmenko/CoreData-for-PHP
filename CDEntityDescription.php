@@ -4,21 +4,17 @@
  * Created 31/05/14 by Vitaliy Kuz'menko © 2014
  * All rights reserved.
 
- * EntityDescription.php
- * EntityDescription
+ * CDEntityDescription.php
+ * CDEntityDescription
  */
-
-namespace CoreData;
 
 require_once realpath(dirname(__FILE__)) . '/CoreData.php';
 
-class EntityDescription {
+class CDEntityDescription {
 	
 	private $table;
 	
 	private $fields;
-	
-	public $error;
 	
 	public $identifierFieldName = 'id';
 	
@@ -29,7 +25,12 @@ class EntityDescription {
 		$this->setFields($fields);
 		
 		if (!$managedObjectClass) {
-			$managedObjectClass = sprintf('\CoreData\%s', $table);
+			$class = $table;
+			if (CoreData::$isUnderscore) {
+				$class = CDHelper::underscoreToCamelCase($class, true);
+			}
+			
+			$managedObjectClass = sprintf('\%s', $class);
 		}
 		
 		$this->setManagedOjectClass($managedObjectClass);
@@ -47,7 +48,7 @@ class EntityDescription {
 	
 	public function setManagedOjectClass($managedObjectClass) {
 		if (!trim($managedObjectClass)) {
-			$managedObjectClass = '\CoreData\ManagedObject';
+			$managedObjectClass = 'CDManagedObject';
 		}
 		$this->managedObjectClass = $managedObjectClass;
 	}
@@ -167,15 +168,4 @@ class EntityDescription {
 		
 	}
 	
-	private function errorDescription($code) {
-		
-		switch ($code) {
-			case 404:
-			
-				break;
-		}
-		
-	}
-	
-
 }

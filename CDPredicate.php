@@ -3,15 +3,13 @@
  * Created 31/05/14 by Vitaliy Kuz'menko © 2014
  * All rights reserved.
 
- * Predicate.php
- * Predicate
+ * CDPredicate.php
+ * CDPredicate
  */
-
-namespace CoreData;
 
 require_once realpath(dirname(__FILE__)) . '/CoreData.php';
 
-class Predicate {
+class CDPredicate {
 	
 	private $operand = array();
 	
@@ -23,8 +21,6 @@ class Predicate {
 	
 	private $store;
 	
-	public $error = array();
-	
 	/**
 	 * __construct function.
 	 * Call if set parameters addEqualOperand($field, $value)
@@ -34,9 +30,9 @@ class Predicate {
 	 * @param mixed $value (default: null)
 	 * @return void
 	 */
-	function __construct($field = null, $value = null, PersistentStore $store = null) {
+	function __construct($field = null, $value = null, CDPersistentStore $store = null) {
 		if (!$store) {
-			$store = \CoreData::getStore();
+			$store = CoreData::getStore();
 		}
 		$this->store = $store;
 
@@ -66,7 +62,36 @@ class Predicate {
 	 * @return void
 	 */
 	public function addEqualOperand($field, $value) {
-		
+		$this->addSimpleOperand($field, $value, "`%s`='%s'");
+	}
+
+	/**
+	 * addNotEqualOperand function.
+	 * Add equal operand by field and value to predicate
+	 * 
+	 * @access public
+	 * @param mixed $field
+	 * @param mixed $value
+	 * @return void
+	 */
+	public function addNotEqualOperand($field, $value) {
+		$this->addSimpleOperand($field, $value, "`%s`!='%s'");
+	}	
+	
+	public function addGreaterOperand($field, $value) {
+		$this->addSimpleOperand($field, $value, "`%s` > '%s'");
+	}
+
+	public function addLessOperand($field, $value) {
+		$this->addSimpleOperand($field, $value, "`%s` < '%s'");
+	}
+	
+	public function addBetweenOperand($field, array $value) {
+		$value = implode(' AND ', $value);
+		$this->addSimpleOperand($field, $value, "(`%s` BETWEEN %s)");
+	}
+	
+	public function addSimpleOperand($field, $value, $format) {
 		if (is_array($value)) {
 			if (array_key_exists('value', $value)) {
 				$value = $value['value'];
@@ -82,35 +107,13 @@ class Predicate {
 			
 			$value = $connection->real_escape_string($value);
 		}
-	
-		array_push($this->operand, sprintf("`%s`='%s'", $field, $value));
+		
+		if (CoreData::$isUnderscore) {
+			$field = CDHelper::camelCaseToUnderscore($field);
+		}
+		
+		array_push($this->operand, sprintf($format, $field, $value));
 	}
-
-	/**
-	 * addNotEqualOperand function.
-	 * Add equal operand by field and value to predicate
-	 * 
-	 * @access public
-	 * @param mixed $field
-	 * @param mixed $value
-	 * @return void
-	 */
-	public function addNotEqualOperand($field, $value) {
-		
-		if (is_array($value)) {
-			if (array_key_exists('value', $value)) {
-				$value = $value['value'];
-			} else {
-				$value = null;
-			}
-		}
-		
-		if (is_string($value)) {
-			$value = $this->store->connection->real_escape_string(null, $value);
-		}
-	
-		array_push($this->operand, sprintf("`%s`!='%s'", $field, $value));
-	}	
 	
 	/**
 	 * addEqualOperandFromArray function.
@@ -122,7 +125,9 @@ class Predicate {
 	 */
 	public function addEqualOperandFromArray(array $array, $excludeField = null) {
 		foreach ($array as $field => $value) {
-			if ($excludeField == $field) {
+			
+			if ((is_array($excludeField) && in_array($field, $excludeField))
+			|| (is_string($excludeField) && $excludeField == $field)) {
 				continue;
 			}
 			
@@ -141,8 +146,7 @@ class Predicate {
 	 */
 	public function addLikeOperand($field, $value) {
 		$value = '%' . $value . '%';
-	
-		array_push($this->operand, sprintf("`%s` LIKE '%s'", $field, $this->store->connection->real_escape_string(null, $value)));
+		$this->addSimpleOperand($field, $value, "`%s` LIKE '%s'");
 	}
 	
 	/**
@@ -181,12 +185,10 @@ class Predicate {
 		}
 
 		if (count($array)) {
-			array_push($this->operand, sprintf("`%s` IN(%s)", $field, implode(',', $array)));
+			$this->addSimpleOperand($field, implode(',', $array), "`%s` IN(%s)");
 		}
 	}
-	
-	
-	
+		
 	/**
 	 * addANDPredicate function.
 	 * 
@@ -219,9 +221,12 @@ class Predicate {
 	 */
 	public function addPredicate($predicate, $operator = null) {
 		
-		$string = '(' . $predicate->predicateInString($operator, null) . ')';
+		$string = $predicate->predicateInString();
 		
-		array_push($this->operand, $string);
+		if (!empty($string)) {
+			$string = '(' . $predicate->predicateInString($operator, null) . ')';			
+			array_push($this->operand, $string);
+		}
 	}
 	
 	/**
@@ -234,7 +239,7 @@ class Predicate {
 	public function predicateInString($operator = null, $controlWord = 'WHERE') {
 	
 		if ($controlWord != 'WHERE' && $controlWord != 'SET' && !is_null($controlWord)) {
-			array_push($this->errors, $this->errorDescription(400));
+			Error::setError('Predicate Error: is not a valid control word.');
 			return;
 		}
 	
@@ -256,24 +261,6 @@ class Predicate {
 		$this->string = $string;
 		
 		return $string;
-	}
-	
-	/**
-	 * errorDescription function.
-	 * - Error Description
-	 * @access private
-	 * @param mixed &$store
-	 * @param mixed $code
-	 * @return string
-	 */
-	private function errorDescription($code) {
-		
-		switch ($code) {
-			case 400:
-				return sprintf('Predicate Error: is not a valid control word.');
-				break;
-		}
-		
 	}
 	
 }

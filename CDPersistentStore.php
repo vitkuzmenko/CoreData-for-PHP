@@ -4,15 +4,13 @@
  * Created 31/05/14 by Vitaliy Kuz'menko © 2014
  * All rights reserved.
 
- * PersistentStore.php
- * PersistentStore
+ * CDPersistentStore.php
+ * CDPersistentStore
  */
-
-namespace CoreData;
 
 require_once realpath(dirname(__FILE__)) . '/CoreData.php';
 
-class PersistentStore {
+class CDPersistentStore {
 	
 	public $name;
 	

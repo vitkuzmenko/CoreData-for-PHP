@@ -7,17 +7,23 @@
  * CoreData.php
  * 
  */
- 
-define('CORE_DATA_PATH', realpath(dirname(__FILE__)));
+// Class Autoloader
+spl_autoload_register(function ($sClassName) {
+	if (empty($sClassName)) {
+		throw new Exception('Class name is empty');
+	}
 
-require_once CORE_DATA_PATH . '/PersistentStoreCoordinator.php';
-require_once CORE_DATA_PATH . '/PersistentStore.php';
-require_once CORE_DATA_PATH . '/EntityDescription.php';
-require_once CORE_DATA_PATH . '/FetchedRequest.php';
-require_once CORE_DATA_PATH . '/FetchedResultsController.php';
-require_once CORE_DATA_PATH . '/Predicate.php';
-require_once CORE_DATA_PATH . '/SortDescriptor.php';
-require_once CORE_DATA_PATH . '/ManagedObject.php';
+	$sPath = realpath(dirname(__FILE__));
+	if (empty($sPath)) {
+		throw new Exception('Current path is empty');
+	}
+
+	$sFile = sprintf('%s%s%s.php', $sPath, DIRECTORY_SEPARATOR, str_replace('_', DIRECTORY_SEPARATOR, $sClassName));
+
+	if (is_file($sFile) && is_readable($sFile)) {
+		require_once $sFile;
+	}
+});
 
 /**
  * Singleton CoreData class
@@ -26,6 +32,28 @@ require_once CORE_DATA_PATH . '/ManagedObject.php';
 final class CoreData {
 	
 	public $coordinator;
+	
+	/**
+	 * Names in data base based on underscore
+	 * 
+	 * (default value: false)
+	 * 
+	 * @var bool
+	 * @access public
+	 * @static
+	 */
+	static $isUnderscore = false;
+	
+	/**
+	 * Output objects values data based on underscore
+	 * 
+	 * (default value: false)
+	 * 
+	 * @var bool
+	 * @access public
+	 * @static
+	 */
+	static $outputIsUnderscore = false;
 	
     /**
      * Call this method to get singleton
@@ -52,12 +80,12 @@ final class CoreData {
     	$coordinator = CoreData::coordinator();
     	return $coordinator->getStore($name);
     }
-    
+        
     /**
-     * Get PersistentStoreCoordinator
+     * Get CDPersistentStoreCoordinator
      * 
      * @access public
-     * @return \CoreData\PersistentStoreCoordinator
+     * @return CDPersistentStoreCoordinator
      */
     public static function coordinator() {
 	    $coreData = CoreData::sharedInstance();
@@ -66,39 +94,44 @@ final class CoreData {
 	    	return $coreData->coordinator;
     	}
     	
-    	$coreData->coordinator = new \CoreData\PersistentStoreCoordinator();
+    	$coreData->coordinator = new CDPersistentStoreCoordinator();
     	
     	return $coreData->coordinator;
+    }
+
+	// ! Errors
+    
+    public static function error() {
+		return CDError::sharedInstance();
+    }
+
+    public static function checkForError() {
+		return CDError::checkForError();
     }
     
     // ! AddStores
     
     /**
-     * Add Store to PersistentStoreCoordinator.
+     * Add Store to CDPersistentStoreCoordinator.
      * 
      * @access public
      * @static
-     * @param \CoreData\PersistentStore $store
+     * @param CDPersistentStore $store
      * @return void
      */
-    public static function addStore(\CoreData\PersistentStore $store) {
+    public static function addStore(CDPersistentStore $store) {
     	$coordinator = CoreData::coordinator();
     	$coordinator->addPersistentStore($store);
     }
     
     public static function addStoreFromArray(array $store) {
-		$newStore = new \CoreData\PersistentStore($store['name'], $store['host'], $store['user'], $store['password'], $store['dataBase']);
+		$newStore = new CDPersistentStore($store['name'], $store['host'], $store['user'], $store['password'], $store['dataBase']);
 		CoreData::addStore($newStore);
     }
     
     public static function connect() {
     	$coordinator = CoreData::coordinator();
     	$coordinator->connect();
-    }
-    
-    public static function error() {
-    	$coordinator = CoreData::coordinator();
-    	return $coordinator->error;
     }
     
 }

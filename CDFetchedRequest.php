@@ -4,15 +4,13 @@
  * Created 31/05/14 by Vitaliy Kuz'menko © 2014
  * All rights reserved.
 
- * FetchedResultsController.php
- * FetchedResultsController
+ * CDFetchedRequest.php
+ * CDFetchedRequest
  */
-
-namespace CoreData;
 
 require_once realpath(dirname(__FILE__)) . '/CoreData.php';
 
-class FetchedRequest {
+class CDFetchedRequest {
 	
 	// !Private Property
 	
@@ -31,8 +29,6 @@ class FetchedRequest {
 	private $page;
 	
 	// !Public Property
-	
-	public $error;
 	
 	public function __construct($entity = null, $predicate = null, $sortDescriptor = null, $limit = null) {
 		$this->setEntity($entity);
@@ -71,7 +67,7 @@ class FetchedRequest {
 	
 	public function setSortDescriptor($sortDescriptor) {
 		if (!$sortDescriptor) {
-			$sortDescriptor = new SortDescriptor();
+			$sortDescriptor = new CDSortDescriptor();
 		}
 		$this->sortDescriptor = $sortDescriptor;
 	}
@@ -103,7 +99,7 @@ class FetchedRequest {
 	public function limitInString() {
 		
 		if ($this->limit == 0) {
-			return null;
+			return;
 		}
 		
 		$limit = null;
